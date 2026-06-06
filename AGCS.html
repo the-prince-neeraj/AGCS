@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ground Control Staff Portal</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Hide scrollbar for cleaner look like the react app */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-50 font-sans selection:bg-blue-200">
+
+    <!-- Top Navigation -->
+    <nav class="bg-slate-900 text-white p-4 shadow-lg flex flex-col md:flex-row justify-between items-center z-10 sticky top-0" id="topnav">
+        <div class="flex items-center space-x-3 mb-4 md:mb-0">
+            <i class="fa-solid fa-plane-departure text-blue-400 text-2xl"></i>
+            <h1 class="text-xl font-bold tracking-wider">GROUND CONTROL AI</h1>
+        </div>
+        <div class="flex items-center space-x-6">
+            <div class="flex space-x-2">
+                <button onclick="changeView('dashboard')" id="nav-dashboard" class="px-3 py-1.5 rounded transition bg-blue-600">Dashboard</button>
+                <button onclick="changeView('add')" id="nav-add" class="px-3 py-1.5 rounded transition bg-slate-800 hover:bg-slate-700">Add Aircraft</button>
+                <button onclick="changeView('modify')" id="nav-modify" class="px-3 py-1.5 rounded transition bg-slate-800 hover:bg-slate-700">Modify Schedule</button>
+            </div>
+            <div class="flex items-center space-x-4 border-l border-slate-700 pl-4">
+                <button onclick="toggleWeather()" id="weather-btn" class="flex items-center space-x-2 px-3 py-1 rounded border bg-amber-900 border-amber-400 text-amber-200 transition-all" title="Toggle Weather to test AI logic">
+                    <i class="fa-solid fa-sun" id="weather-icon"></i>
+                    <span class="text-sm font-semibold" id="weather-text">Clear Weather</span>
+                </button>
+                <div class="flex items-center space-x-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
+                    <i class="fa-regular fa-clock text-blue-400"></i>
+                    <span class="font-mono text-lg" id="clock-display">00:00:00</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- DASHBOARD VIEW -->
+    <div id="view-dashboard" class="p-6 space-y-6 block">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Left Side: Departed -->
+            <div class="bg-white rounded-xl shadow border border-slate-200 overflow-hidden flex flex-col h-[400px]">
+                <div class="bg-slate-100 p-4 border-b border-slate-200 flex items-center space-x-2">
+                    <i class="fa-solid fa-plane-departure text-slate-500 text-lg"></i>
+                    <h2 class="text-lg font-bold text-slate-800">Recently Departed</h2>
+                </div>
+                <div class="p-4 flex-1 overflow-y-auto" id="departed-list">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Right Side: Arriving -->
+            <div class="bg-white rounded-xl shadow border border-slate-200 overflow-hidden flex flex-col h-[400px]">
+                <div class="bg-blue-50 p-4 border-b border-blue-100 flex items-center space-x-2">
+                    <i class="fa-solid fa-plane-arrival text-blue-600 text-lg"></i>
+                    <h2 class="text-lg font-bold text-blue-900">Incoming Aircrafts</h2>
+                </div>
+                <div class="p-4 flex-1 overflow-y-auto" id="arriving-list">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom AI Prediction Section -->
+        <div class="bg-gradient-to-br from-indigo-900 to-slate-900 rounded-xl shadow-xl overflow-hidden text-white">
+            <div class="p-4 border-b border-indigo-800/50 flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-indigo-500/20 rounded-lg"><i class="fa-regular fa-clock text-indigo-300 text-xl"></i></div>
+                    <div>
+                        <h2 class="text-xl font-bold">AI Terminal & Gate Allocation</h2>
+                        <p class="text-sm text-indigo-300">Pending predictions requiring staff approval</p>
+                    </div>
+                </div>
+                <div id="weather-gap-indicator" class="hidden px-3 py-1 bg-blue-500/20 border border-blue-400/30 text-blue-200 rounded text-sm flex items-center">
+                    <i class="fa-solid fa-cloud-rain mr-2"></i> Weather Gaps Applied
+                </div>
+            </div>
+            
+            <div class="p-4 overflow-x-auto" id="predictions-container">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD FLIGHT VIEW -->
+    <div id="view-add" class="p-6 max-w-2xl mx-auto hidden">
+        <button onclick="changeView('dashboard')" class="flex items-center text-blue-600 hover:text-blue-800 mb-6 font-semibold">
+            <i class="fa-solid fa-chevron-left mr-2"></i> Back to Dashboard
+        </button>
+        <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-8">
+            <h2 class="text-2xl font-bold text-slate-800 mb-6 flex items-center">
+                <i class="fa-solid fa-plus mr-2 text-blue-500"></i> Add New Aircraft
+            </h2>
+            <form id="add-flight-form" class="space-y-5">
+                <div class="grid grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-600 mb-1">Flight Number</label>
+                        <input id="add-fn" required class="w-full p-2.5 border rounded-lg bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. AI898" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-600 mb-1">Airline</label>
+                        <input id="add-al" required class="w-full p-2.5 border rounded-lg bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. Air India" />
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-sm font-semibold text-slate-600 mb-1">Aircraft Model</label>
+                        <input id="add-am" required class="w-full p-2.5 border rounded-lg bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. Airbus A320neo" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-600 mb-1">Arrival Time (HH:MM)</label>
+                        <input id="add-at" required type="time" class="w-full p-2.5 border rounded-lg bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none font-mono" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-600 mb-1">Departure Time (HH:MM)</label>
+                        <input id="add-dt" required type="time" class="w-full p-2.5 border rounded-lg bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none font-mono" />
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-sm font-semibold text-slate-600 mb-1">Initial Status</label>
+                        <select id="add-st" class="w-full p-2.5 border rounded-lg bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="On Time">On Time</option>
+                            <option value="Late">Delayed / Late</option>
+                            <option value="Emergency">Emergency Landing</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg transition mt-6">Add Aircraft to Schedule</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODIFY FLIGHT VIEW -->
+    <div id="view-modify" class="p-6 hidden">
+        <div class="flex justify-between items-center mb-6">
+            <button onclick="changeView('dashboard')" class="flex items-center text-blue-600 hover:text-blue-800 font-semibold">
+                <i class="fa-solid fa-chevron-left mr-2"></i> Back to Dashboard
+            </button>
+            <button onclick="saveModifications()" class="flex items-center bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg font-bold shadow transition">
+                <i class="fa-solid fa-floppy-disk mr-2"></i> Save Modifications
+            </button>
+        </div>
+        <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+            <div class="bg-slate-100 p-5 border-b border-slate-200 flex items-center space-x-3">
+                <i class="fa-solid fa-pen-to-square text-slate-600 text-2xl"></i>
+                <h2 class="text-2xl font-bold text-slate-800">Modify Arriving Schedule</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-500 text-sm uppercase tracking-wider">
+                            <th class="p-4 font-semibold border-b">Flight</th>
+                            <th class="p-4 font-semibold border-b">Arrival</th>
+                            <th class="p-4 font-semibold border-b">Departure</th>
+                            <th class="p-4 font-semibold border-b">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modify-list" class="divide-y divide-slate-100">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // --- INITIAL MOCK DATA ---
+        const INITIAL_FLIGHTS = [
+            { id: '1', flightNumber: 'AI101', airline: 'Air India', aircraftModel: 'Airbus A320', arrivalTime: '14:30', departureTime: '15:30', status: 'On Time', terminal: '', gate: '', approved: false },
+            { id: '2', flightNumber: '6E205', airline: 'IndiGo', aircraftModel: 'Airbus A321neo', arrivalTime: '15:10', departureTime: '16:00', status: 'Late', terminal: '', gate: '', approved: false },
+            { id: '3', flightNumber: 'SJ731', airline: 'SpiceJet', aircraftModel: 'Boeing 737 Cargo', arrivalTime: '15:45', departureTime: '17:00', status: 'On Time', terminal: '', gate: '', approved: false },
+            { id: '4', flightNumber: 'UK827', airline: 'Vistara', aircraftModel: 'Airbus A320neo', arrivalTime: '16:20', departureTime: '17:15', status: 'Emergency', terminal: '', gate: '', approved: false },
+            { id: '5', flightNumber: 'SG514', airline: 'SpiceJet', aircraftModel: 'Boeing 737-800', arrivalTime: '12:30', departureTime: '13:15', status: 'Departed', terminal: 'B', gate: '3', approved: true },
+            { id: '6', flightNumber: 'AK189', airline: 'AirAsia', aircraftModel: 'Airbus A321neo', arrivalTime: '13:00', departureTime: '13:55', status: 'Departed', terminal: 'A', gate: '2', approved: true }
+        ];
+
+        // --- SAFE LOCAL STORAGE WRAPPER (Fixes bugs in strict code editors) ---
+        function loadSavedFlights() {
+            try {
+                const saved = localStorage.getItem('airport_flights_db');
+                if (saved) return JSON.parse(saved);
+            } catch (error) {
+                console.warn("Local storage blocked by code editor sandbox. Using mock data in memory.");
+            }
+            return INITIAL_FLIGHTS;
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem('airport_flights_db', JSON.stringify(state.flights));
+            } catch (error) {
+                console.warn("Could not save to local storage (sandbox restrictions). State saved in memory only.");
+            }
+        }
+
+        // --- STATE ---
+        let state = {
+            currentView: 'dashboard',
+            flights: loadSavedFlights(),
+            time: new Date(),
+            isRaining: false,
+            predictions: {}
+        };
+        let editList = [];
+
+        // --- UTILS ---
+        const formatTime = (date) => date.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+        const getCurrentMinutes = () => state.time.getHours() * 60 + state.time.getMinutes();
+        const getMinutesFromString = (timeStr) => {
+            if(!timeStr) return 0;
+            const [h, m] = timeStr.split(':').map(Number);
+            return h * 60 + m;
+        };
+
+        // --- CORE FUNCTIONS ---
+        function updateClock() {
+            state.time = new Date();
+            document.getElementById('clock-display').innerText = formatTime(state.time);
+            if(state.currentView === 'dashboard') renderDashboardTimeSensitive(); // Update lists without full re-render
+        }
+
+        function generatePredictions() {
+            state.predictions = {};
+            state.flights.forEach(f => {
+                if (!f.approved && !f.terminal) {
+                    let term, gate;
+                    const isCargo = f.aircraftModel.toLowerCase().includes('cargo');
+                    const isEmergency = f.status.toLowerCase().includes('emergency');
+                    
+                    if (isCargo) {
+                        term = 'D';
+                        gate = Math.random() > 0.5 ? '1' : '2';
+                    } else if (isEmergency) {
+                        const terms = ['A', 'B', 'C'];
+                        term = terms[Math.floor(Math.random() * terms.length)];
+                        gate = '6'; 
+                    } else {
+                        const terms = ['A', 'B', 'C'];
+                        const normalGates = ['1', '2', '3', '4', '5'];
+                        term = terms[Math.floor(Math.random() * terms.length)];
+                        gate = normalGates[Math.floor(Math.random() * normalGates.length)];
+                    }
+
+                    let predArrival = f.arrivalTime;
+                    if (state.isRaining && !isEmergency) {
+                        const mins = getMinutesFromString(f.arrivalTime) + 15;
+                        const h = Math.floor(mins / 60) % 24;
+                        const m = mins % 60;
+                        predArrival = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+                    }
+
+                    state.predictions[f.id] = { terminal: term, gate: gate, predictedArrival: predArrival, isRainDelayed: state.isRaining && !isEmergency };
+                }
+            });
+        }
+
+        function handleApprove(id) {
+            const pred = state.predictions[id];
+            if (pred) {
+                state.flights = state.flights.map(f => f.id === id ? { 
+                    ...f, 
+                    terminal: pred.terminal, 
+                    gate: pred.gate, 
+                    arrivalTime: pred.predictedArrival,
+                    approved: true 
+                } : f);
+                saveState();
+                generatePredictions();
+                renderDashboard();
+            }
+        }
+
+        // --- UI RENDERING ---
+        function toggleWeather() {
+            state.isRaining = !state.isRaining;
+            const btn = document.getElementById('weather-btn');
+            const icon = document.getElementById('weather-icon');
+            const txt = document.getElementById('weather-text');
+            const gapInd = document.getElementById('weather-gap-indicator');
+
+            if(state.isRaining) {
+                btn.className = "flex items-center space-x-2 px-3 py-1 rounded border bg-blue-900 border-blue-400 text-blue-200 transition-all";
+                icon.className = "fa-solid fa-cloud-rain";
+                txt.innerText = "Rain: Delay Active";
+                gapInd.classList.remove('hidden');
+            } else {
+                btn.className = "flex items-center space-x-2 px-3 py-1 rounded border bg-amber-900 border-amber-400 text-amber-200 transition-all";
+                icon.className = "fa-solid fa-sun";
+                txt.innerText = "Clear Weather";
+                gapInd.classList.add('hidden');
+            }
+
+            generatePredictions();
+            if(state.currentView === 'dashboard') renderDashboard();
+        }
+
+        function changeView(view) {
+            state.currentView = view;
+            
+            // Hide all
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-add').classList.add('hidden');
+            document.getElementById('view-modify').classList.add('hidden');
+            
+            // Show target
+            document.getElementById(`view-${view}`).classList.remove('hidden');
+            
+            // Update Nav Buttons
+            ['dashboard', 'add', 'modify'].forEach(v => {
+                const el = document.getElementById(`nav-${v}`);
+                if(v === view) {
+                    el.className = "px-3 py-1.5 rounded transition bg-blue-600";
+                } else {
+                    el.className = "px-3 py-1.5 rounded transition bg-slate-800 hover:bg-slate-700";
+                }
+            });
+
+            if(view === 'dashboard') {
+                generatePredictions();
+                renderDashboard();
+            }
+            if(view === 'modify') initModifyView();
+        }
+
+        function getLists() {
+            const currentMins = getCurrentMinutes();
+            
+            const departedFlights = state.flights.filter(f => {
+                const depMins = getMinutesFromString(f.departureTime);
+                // Increased visual window to 4 hours (240 mins) so newly tested past flights don't vanish instantly
+                return f.status === 'Departed' || (depMins < currentMins && currentMins - depMins <= 240);
+            }).sort((a, b) => getMinutesFromString(b.departureTime) - getMinutesFromString(a.departureTime));
+
+            const arrivingFlights = state.flights.filter(f => {
+                const depMins = getMinutesFromString(f.departureTime);
+                return f.status !== 'Departed' && depMins >= currentMins;
+            }).sort((a, b) => getMinutesFromString(a.arrivalTime) - getMinutesFromString(b.arrivalTime));
+
+            const unapprovedFlights = state.flights.filter(f => !f.approved);
+
+            return { departedFlights, arrivingFlights, unapprovedFlights };
+        }
+
+        // Render time-sensitive lists (Departed & Arriving) without interrupting UI
+        function renderDashboardTimeSensitive() {
+            if (state.currentView !== 'dashboard') return;
+            const { departedFlights, arrivingFlights } = getLists();
+            
+            // Departed
+            const depHTML = departedFlights.length === 0 ? `<p class="text-slate-400 text-center mt-10">No recent departures.</p>` : 
+                `<div class="space-y-3">` + departedFlights.map(f => `
+                    <div class="flex justify-between items-center p-3 rounded-lg border border-slate-100 bg-slate-50">
+                        <div>
+                            <div class="font-bold text-slate-700">${f.flightNumber} <span class="font-normal text-slate-500 text-sm ml-2">${f.airline}</span></div>
+                            <div class="text-sm text-slate-500">Term ${f.terminal || '-'} • Gate ${f.gate || '-'}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-mono font-semibold text-slate-600">${f.departureTime}</div>
+                            <div class="text-xs font-bold text-slate-400 uppercase">Departed</div>
+                        </div>
+                    </div>
+                `).join('') + `</div>`;
+            document.getElementById('departed-list').innerHTML = depHTML;
+
+            // Arriving
+            const arrHTML = arrivingFlights.length === 0 ? `<p class="text-slate-400 text-center mt-10">No incoming flights.</p>` : 
+                `<div class="space-y-3">` + arrivingFlights.map(f => {
+                    const isEmerg = f.status.toLowerCase().includes('emergency');
+                    const isCargo = f.aircraftModel.toLowerCase().includes('cargo');
+                    const statusColor = f.status === 'Late' ? 'text-orange-500' : f.status === 'Emergency' ? 'text-red-600' : 'text-emerald-600';
+                    return `
+                    <div class="flex justify-between items-center p-3 rounded-lg border border-blue-50 bg-white shadow-sm">
+                        <div>
+                            <div class="font-bold text-blue-900 flex items-center space-x-2">
+                                <span>${f.flightNumber}</span>
+                                ${isEmerg ? `<i class="fa-solid fa-triangle-exclamation text-red-500 text-xs"></i>` : ''}
+                                ${isCargo ? `<i class="fa-solid fa-box text-amber-600 text-xs"></i>` : ''}
+                            </div>
+                            <div class="text-sm text-slate-500">${f.airline} • ${f.aircraftModel}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-mono font-bold text-blue-600">${f.arrivalTime}</div>
+                            <div class="text-xs font-bold uppercase ${statusColor}">${f.status}</div>
+                        </div>
+                    </div>
+                `}).join('') + `</div>`;
+            document.getElementById('arriving-list').innerHTML = arrHTML;
+        }
+
+        // Render full dashboard including predictions
+        function renderDashboard() {
+            renderDashboardTimeSensitive();
+            const { unapprovedFlights } = getLists();
+            
+            // Predictions
+            let predHTML = "";
+            if(unapprovedFlights.length === 0) {
+                predHTML = `<p class="text-indigo-300 text-center py-6">All active flights have been routed and approved.</p>`;
+            } else {
+                predHTML = `
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="text-indigo-300 text-sm border-b border-indigo-800">
+                                <th class="pb-3 px-2">Flight</th>
+                                <th class="pb-3 px-2">Type / Needs</th>
+                                <th class="pb-3 px-2">Scheduled Arr.</th>
+                                <th class="pb-3 px-2 text-indigo-100">AI Predicted Arr.</th>
+                                <th class="pb-3 px-2 text-indigo-100">AI Terminal</th>
+                                <th class="pb-3 px-2 text-indigo-100">AI Gate</th>
+                                <th class="pb-3 px-2 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                unapprovedFlights.forEach(f => {
+                    const pred = state.predictions[f.id] || {};
+                    const isEmerg = f.status === 'Emergency';
+                    const isCargo = f.aircraftModel.toLowerCase().includes('cargo');
+                    
+                    let typeBadge = `<span class="text-indigo-200">Passenger</span>`;
+                    if (isEmerg) typeBadge = `<span class="text-red-400 font-bold flex items-center"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Emergency</span>`;
+                    else if (isCargo) typeBadge = `<span class="text-amber-400 flex items-center"><i class="fa-solid fa-box mr-1"></i> Cargo</span>`;
+
+                    predHTML += `
+                        <tr class="border-b border-indigo-800/50 hover:bg-white/5 transition">
+                            <td class="py-3 px-2 font-bold">${f.flightNumber}</td>
+                            <td class="py-3 px-2 text-sm">${typeBadge}</td>
+                            <td class="py-3 px-2 font-mono text-indigo-300">${f.arrivalTime}</td>
+                            <td class="py-3 px-2 font-mono font-bold text-amber-300">${pred.predictedArrival || '-'} ${pred.isRainDelayed ? '<span class="text-xs text-blue-300 ml-1">(+15m rain)</span>' : ''}</td>
+                            <td class="py-3 px-2 font-bold text-xl">${pred.terminal || '-'}</td>
+                            <td class="py-3 px-2 font-bold text-xl">${pred.gate || '-'}</td>
+                            <td class="py-3 px-2 text-right">
+                                <button onclick="handleApprove('${f.id}')" class="bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-1.5 rounded font-bold shadow transition inline-flex items-center">
+                                    <i class="fa-regular fa-circle-check mr-2"></i> Approve
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                predHTML += `</tbody></table>`;
+            }
+            document.getElementById('predictions-container').innerHTML = predHTML;
+        }
+
+        // --- FORM HANDLERS ---
+        document.getElementById('add-flight-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const newFlight = {
+                id: Date.now().toString(),
+                flightNumber: document.getElementById('add-fn').value.toUpperCase(),
+                airline: document.getElementById('add-al').value,
+                aircraftModel: document.getElementById('add-am').value,
+                arrivalTime: document.getElementById('add-at').value,
+                departureTime: document.getElementById('add-dt').value,
+                status: document.getElementById('add-st').value,
+                approved: false,
+                terminal: '',
+                gate: ''
+            };
+            
+            state.flights.push(newFlight);
+            saveState();
+            generatePredictions();
+            
+            // Reset form
+            this.reset();
+            document.getElementById('add-st').value = "On Time";
+            
+            changeView('dashboard');
+        });
+
+        function initModifyView() {
+            const { arrivingFlights } = getLists();
+            // Deep copy to prevent mutating state before save
+            editList = JSON.parse(JSON.stringify(arrivingFlights));
+            
+            const listHTML = editList.map(f => `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="p-4">
+                        <div class="font-bold text-slate-800">${f.flightNumber}</div>
+                        <div class="text-sm text-slate-500">${f.airline}</div>
+                    </td>
+                    <td class="p-4"><input type="time" class="p-2 border rounded font-mono w-32 outline-none focus:ring-2 focus:ring-blue-400" value="${f.arrivalTime}" onchange="updateEditList('${f.id}', 'arrivalTime', this.value)" /></td>
+                    <td class="p-4"><input type="time" class="p-2 border rounded font-mono w-32 outline-none focus:ring-2 focus:ring-blue-400" value="${f.departureTime}" onchange="updateEditList('${f.id}', 'departureTime', this.value)" /></td>
+                    <td class="p-4">
+                        <select class="p-2 border rounded outline-none focus:ring-2 focus:ring-blue-400 w-full" onchange="updateEditList('${f.id}', 'status', this.value)">
+                            <option value="On Time" ${f.status === 'On Time' ? 'selected' : ''}>On Time</option>
+                            <option value="Late" ${f.status === 'Late' ? 'selected' : ''}>Late</option>
+                            <option value="Departed" ${f.status === 'Departed' ? 'selected' : ''}>Departed</option>
+                            <option value="Emergency" ${f.status === 'Emergency' ? 'selected' : ''}>Emergency</option>
+                        </select>
+                    </td>
+                </tr>
+            `).join('');
+            
+            document.getElementById('modify-list').innerHTML = listHTML;
+        }
+
+        function updateEditList(id, field, value) {
+            const item = editList.find(e => e.id === id);
+            if(item) item[field] = value;
+        }
+
+        function saveModifications() {
+            state.flights = state.flights.map(f => {
+                const updated = editList.find(e => e.id === f.id);
+                return updated ? updated : f;
+            });
+            saveState();
+            changeView('dashboard');
+        }
+
+        // --- INIT ---
+        setInterval(updateClock, 1000);
+        updateClock();
+        generatePredictions();
+        renderDashboard();
+
+    </script>
+</body>
+</html>
